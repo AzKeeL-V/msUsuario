@@ -1,7 +1,9 @@
 package com.msUsuario.msUsuario.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Entity
 @Table(name = "usuarios")
@@ -20,7 +22,7 @@ public class Usuario {
     @Column(nullable = false)
     private String apUsuario;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER) // Carga el rol junto con el usuario
     @JoinColumn(name = "rol_id", nullable = false)
     private Rol rol;
 

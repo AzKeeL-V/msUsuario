@@ -1,14 +1,14 @@
 package com.msUsuario.msUsuario.service;
-
-import com.msUsuario.msUsuario.model.Usuario;
+import com.msUsuario.msUsuario.model.*;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface UsuarioService {
     Usuario crearUsuario(Usuario usuario);
-    void eliminarUsuario(int id);
-    Usuario actualizarUsuario(int id, Usuario usuario);
-    Usuario iniciarSesion(String correo, String password);
-    void cerrarSesion(); // Simulación
-    List<Usuario> obtenerTodos();
+    Usuario actualizarUsuario(Integer id, Usuario usuario);
+    void eliminarUsuario(Integer id);
+    Optional<Usuario> obtenerUsuarioPorId(Integer id);
+    List<Usuario> obtenerTodosUsuarios();
+    List<Permiso> obtenerPermisosUsuario(Integer idUsuario);
 }
