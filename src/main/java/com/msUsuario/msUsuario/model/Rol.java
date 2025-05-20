@@ -20,6 +20,7 @@ public class Rol {
     @Column(nullable = false, unique = true)
     private String nombreRol;
 
+    // Colección de permisos para este rol. Cargados de forma EAGER.
     @ElementCollection(targetClass = Permiso.class, fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "rol_permisos", joinColumns = @JoinColumn(name = "rol_id"))

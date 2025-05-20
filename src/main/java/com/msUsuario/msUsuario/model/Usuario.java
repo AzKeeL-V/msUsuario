@@ -22,7 +22,8 @@ public class Usuario {
     @Column(nullable = false)
     private String apUsuario;
 
-    @ManyToOne(fetch = FetchType.EAGER) // Carga el rol junto con el usuario
+    // Relación Muchos-a-Uno con Rol. Un usuario tiene un rol.
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "rol_id", nullable = false)
     private Rol rol;
 
@@ -30,8 +31,13 @@ public class Usuario {
     private String correoUsuario;
 
     @Column(nullable = false)
-    private String passUsuario;
+    private String passUsuario; // Considerar hashear esta contraseña
 
     @Column(nullable = false)
     private Integer idTienda;
+
+    // Campo opcional para 'desactivarUsuario'. No presente en el original.
+    // Si se desea una desactivación lógica, se añadiría algo como:
+    // @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    // private boolean activo = true;
 }

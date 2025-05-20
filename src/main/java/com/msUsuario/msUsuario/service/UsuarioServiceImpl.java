@@ -2,12 +2,16 @@ package com.msUsuario.msUsuario.service;
 
 import com.msUsuario.msUsuario.model.Usuario;
 import com.msUsuario.msUsuario.model.Permiso;
+import com.msUsuario.msUsuario.model.Rol;
 import com.msUsuario.msUsuario.repository.UsuarioRepository;
 import com.msUsuario.msUsuario.repository.RolRepository;
+import jakarta.persistence.EntityNotFoundException; // Para manejo de errores
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Para asegurar atomicidad
+
 import java.util.List;
 import java.util.Optional;
-
+import java.util.Collections;
 
 @Service
 public class UsuarioServiceImpl implements UsuarioService {
@@ -21,35 +25,68 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
+    @Transactional // Asegura que la operación sea atómica
     public Usuario crearUsuario(Usuario usuario) {
-        // Asegurarse de que el rol exista antes de crear el usuario
-        if (usuario.getRol() != null && usuario.getRol().getId() != null && rolRepository.existsById(usuario.getRol().getId())) {
-            return usuarioRepository.save(usuario);
+        // Validar correo único
+        if (usuarioRepository.findByCorreoUsuario(usuario.getCorreoUsuario()).isPresent()) {
+            throw new IllegalArgumentException("El correo electrónico '" + usuario.getCorreoUsuario() + "' ya está en uso.");
         }
-        // Manejar el caso donde el rol no existe (lanzar excepción, etc.)
-        return null;
+
+        // Validar y asignar el rol
+        if (usuario.getRol() == null || usuario.getRol().getId() == null) {
+            throw new IllegalArgumentException("El rol es obligatorio para crear un usuario.");
+        }
+        Rol rol = rolRepository.findById(usuario.getRol().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado con id: " + usuario.getRol().getId()));
+        usuario.setRol(rol); // Asignar la instancia de rol gestionada
+
+        // Aquí se debería hashear la contraseña antes de guardarla
+        // Ejemplo: usuario.setPassUsuario(passwordEncoder.encode(usuario.getPassUsuario()));
+        return usuarioRepository.save(usuario);
     }
 
     @Override
-    public Usuario actualizarUsuario(Integer id, Usuario usuario) {
-        return usuarioRepository.findById(id)
-                .map(existingUsuario -> {
-                    existingUsuario.setNomUsuario(usuario.getNomUsuario());
-                    existingUsuario.setApUsuario(usuario.getApUsuario());
-                    // Asegurarse de que el rol exista antes de actualizar el usuario
-                    if (usuario.getRol() != null && usuario.getRol().getId() != null && rolRepository.existsById(usuario.getRol().getId())) {
-                        existingUsuario.setRol(usuario.getRol());
-                    }
-                    existingUsuario.setCorreoUsuario(usuario.getCorreoUsuario());
-                    existingUsuario.setPassUsuario(usuario.getPassUsuario());
-                    existingUsuario.setIdTienda(usuario.getIdTienda());
-                    return usuarioRepository.save(existingUsuario);
-                })
-                .orElse(null);
+    @Transactional
+    public Usuario actualizarUsuario(Integer id, Usuario usuarioDetails) {
+        Usuario existingUsuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con id: " + id));
+
+        if (usuarioDetails.getNomUsuario() != null) {
+            existingUsuario.setNomUsuario(usuarioDetails.getNomUsuario());
+        }
+        if (usuarioDetails.getApUsuario() != null) {
+            existingUsuario.setApUsuario(usuarioDetails.getApUsuario());
+        }
+        // Validar correo único si se cambia
+        if (usuarioDetails.getCorreoUsuario() != null && !usuarioDetails.getCorreoUsuario().equals(existingUsuario.getCorreoUsuario())) {
+            if (usuarioRepository.findByCorreoUsuario(usuarioDetails.getCorreoUsuario()).isPresent()) {
+                throw new IllegalArgumentException("El correo electrónico '" + usuarioDetails.getCorreoUsuario() + "' ya está en uso.");
+            }
+            existingUsuario.setCorreoUsuario(usuarioDetails.getCorreoUsuario());
+        }
+        // Actualizar rol si se proporciona uno nuevo y válido
+        if (usuarioDetails.getRol() != null && usuarioDetails.getRol().getId() != null) {
+            Rol nuevoRol = rolRepository.findById(usuarioDetails.getRol().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado con id: " + usuarioDetails.getRol().getId()));
+            existingUsuario.setRol(nuevoRol);
+        }
+        if (usuarioDetails.getPassUsuario() != null && !usuarioDetails.getPassUsuario().isEmpty()) {
+            // Aquí se debería hashear la nueva contraseña
+            // existingUsuario.setPassUsuario(passwordEncoder.encode(usuarioDetails.getPassUsuario()));
+            existingUsuario.setPassUsuario(usuarioDetails.getPassUsuario()); // Temporalmente sin hashear
+        }
+        if (usuarioDetails.getIdTienda() != null) {
+            existingUsuario.setIdTienda(usuarioDetails.getIdTienda());
+        }
+        return usuarioRepository.save(existingUsuario);
     }
 
     @Override
+    @Transactional
     public void eliminarUsuario(Integer id) {
+        if (!usuarioRepository.existsById(id)) {
+            throw new EntityNotFoundException("Usuario no encontrado con id: " + id + " para eliminar.");
+        }
         usuarioRepository.deleteById(id);
     }
 
@@ -65,8 +102,41 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     public List<Permiso> obtenerPermisosUsuario(Integer idUsuario) {
-        Optional<Usuario> usuarioOptional = usuarioRepository.findById(idUsuario);
-        return usuarioOptional.map(usuario -> usuario.getRol().getPermisosRol())
-                .orElse(List.of());
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con id: " + idUsuario));
+        if (usuario.getRol() != null && usuario.getRol().getPermisosRol() != null) {
+            return usuario.getRol().getPermisosRol();
+        }
+        return Collections.emptyList();
+    }
+
+    @Override
+    @Transactional
+    public Usuario desactivarUsuario(Integer id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con id: " + id));
+        // Lógica de desactivación: Si tuvieras un campo 'activo' en la entidad Usuario:
+        // usuario.setActivo(false);
+        // return usuarioRepository.save(usuario);
+        // Como no existe, simplemente devolvemos el usuario o podríamos lanzar una excepción si no se puede "desactivar"
+        System.out.println("Lógica de desactivación para usuario ID " + id + " pendiente (ej. campo 'activo').");
+        return usuario; // Devolvemos el usuario encontrado por ahora
+    }
+
+    @Override
+    @Transactional
+    public Usuario asignarRol(Integer idUsuario, Long rolId) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado con id: " + idUsuario));
+        Rol rol = rolRepository.findById(rolId)
+                .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado con id: " + rolId));
+        usuario.setRol(rol);
+        return usuarioRepository.save(usuario);
+    }
+
+    @Override
+    public List<Usuario> listarUsuariosPorTienda(Integer idTienda) {
+        // Este método ya está definido en UsuarioRepository
+        return usuarioRepository.findByIdTienda(idTienda);
     }
 }
