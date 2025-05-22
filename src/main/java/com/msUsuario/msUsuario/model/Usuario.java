@@ -36,8 +36,5 @@ public class Usuario {
     @Column(nullable = false)
     private Integer idTienda;
 
-    // Campo opcional para 'desactivarUsuario'. No presente en el original.
-    // Si se desea una desactivación lógica, se añadiría algo como:
-    // @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
-    // private boolean activo = true;
+    
 }
