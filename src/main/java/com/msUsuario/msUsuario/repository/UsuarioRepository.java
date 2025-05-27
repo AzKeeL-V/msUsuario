@@ -10,5 +10,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByCorreoUsuario(String correoUsuario);
 
     // Busca usuarios por el ID de la tienda
-    List<Usuario> findByIdTienda(Integer idTienda);
+    List<Usuario> findByIdTienda(long idTienda);
 }

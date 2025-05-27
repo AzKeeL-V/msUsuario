@@ -9,5 +9,9 @@ public enum Permiso {
     CREAR_ROL,
     ACTUALIZAR_ROL,
     ELIMINAR_ROL,
-    VER_ROL
+    VER_ROL,
+    ASIG_ROL,
+    CREAR_RESPALDO,
+    RESTAURAR_DATOS,
+    MONITOREAR_SISTEMA
 }

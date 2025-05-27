@@ -62,3 +62,47 @@
   ]
 }
 
+
+------------------------------------------------------------------
+# INSERTS PARA ROLES
+
+INSERT INTO roles (id, nombre_rol) VALUES (1, 'ADMIN');
+INSERT INTO roles (id, nombre_rol) VALUES (2, 'EMPLEADO');
+INSERT INTO roles (id, nombre_rol) VALUES (3, 'VISITANTE');
+
+# inserts para rol_permisos
+
+-- Permisos para ADMIN (rol_id = 1)
+INSERT INTO rol_permisos (rol_id, permiso) VALUES
+(1, 'CREAR_USUARIO'),
+(1, 'ELIMINAR_USUARIO'),
+(1, 'ACTUALIZAR_USUARIO'),
+(1, 'GESTIONAR_PERMISOS'),
+(1, 'VER_USUARIO'),
+(1, 'CREAR_ROL'),
+(1, 'ACTUALIZAR_ROL'),
+(1, 'ELIMINAR_ROL'),
+(1, 'VER_ROL'),
+(1, 'ASIG_ROL'),
+(1, 'CREAR_RESPALDO'),
+(1, 'RESTAURAR_DATOS'),
+(1, 'MONITOREAR_SISTEMA');
+
+-- Permisos para EMPLEADO (rol_id = 2)
+INSERT INTO rol_permisos (rol_id, permiso) VALUES
+(2, 'CREAR_USUARIO'),
+(2, 'ACTUALIZAR_USUARIO'),
+(2, 'VER_USUARIO'),
+(2, 'VER_ROL');
+
+-- Permisos para VISITANTE (rol_id = 3)
+INSERT INTO rol_permisos (rol_id, permiso) VALUES
+(3, 'VER_USUARIO'),
+(3, 'VER_ROL');
+
+# insert de usuarios 
+INSERT INTO usuarios (nom_usuario, ap_usuario, rol_id, correo_usuario, pass_usuario, id_tienda) VALUES
+('wacoldo', 'soto', 1, 'wacoldito@example.com', 'password123', 101),
+('María', 'González', 2, 'maria.gonzalez@example.com', 'securePass456', 102),
+('zoila', 'Ramírez', 3, 'zoila.ramirez@example.com', 'myPassword789', 103);
+
