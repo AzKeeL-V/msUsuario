@@ -1,4 +1,7 @@
 # Endpoints usuario
+// falta filtrar por rol a todos los usuarios
+poblar datos con un script 
+
 
 | Método HTTP | Ruta                                 | Acción                                                     |
 | ----------- | ------------------------------------ | ---------------------------------------------------------- |
