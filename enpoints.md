@@ -109,3 +109,4 @@ INSERT INTO usuarios (nom_usuario, ap_usuario, rol_id, correo_usuario, pass_usua
 ('María', 'González', 2, 'maria.gonzalez@example.com', 'securePass456', 102),
 ('zoila', 'Ramírez', 3, 'zoila.ramirez@example.com', 'myPassword789', 103);
 
+# inconsistencia en base de datos con el estado de el usuario y roles

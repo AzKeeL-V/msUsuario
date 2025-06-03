@@ -36,4 +36,7 @@ public class Usuario {
     @Column(nullable = false)
     private Integer idTienda;
 
+    @Column(nullable = false)
+    private Boolean estadoUsuario; // Nuevo campo para la eliminación lógica
+
 }

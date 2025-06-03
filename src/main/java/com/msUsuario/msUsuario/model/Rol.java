@@ -24,6 +24,10 @@ public class Rol {
     @ElementCollection(targetClass = Permiso.class, fetch = FetchType.EAGER) //Indica que permisosRol no es otra entidad (como @OneToMany), sino una colección de valores simples o enums (en este caso, enums).
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "rol_permisos", joinColumns = @JoinColumn(name = "rol_id"))
-    @Column(name = "permiso", length = 50) 
+    @Column(name = "permiso", length = 50)
     private List<Permiso> permisosRol;
+
+    @Column(nullable = false)
+    private Boolean estadoRol; // Nuevo campo para la eliminación lógica del rol
+
 }
