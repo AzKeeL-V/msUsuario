@@ -1,0 +1,17 @@
+package com.usuario.usuario.model;
+
+public enum Permiso {
+    CREAR_USUARIO,
+    ELIMINAR_USUARIO,
+    ACTUALIZAR_USUARIO,
+    GESTIONAR_PERMISOS,
+    VER_USUARIO,
+    CREAR_ROL,
+    ACTUALIZAR_ROL,
+    ELIMINAR_ROL,
+    VER_ROL,
+    ASIG_ROL,
+    CREAR_RESPALDO,
+    RESTAURAR_DATOS,
+    MONITOREAR_SISTEMA
+}
