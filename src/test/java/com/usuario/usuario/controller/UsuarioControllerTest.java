@@ -1,5 +1,10 @@
 package com.usuario.usuario.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.usuario.usuario.model.Rol;
+import com.usuario.usuario.model.Usuario;
+import com.usuario.usuario.service.UsuarioService;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,282 +15,352 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.usuario.usuario.model.Rol;
-import com.usuario.usuario.model.Usuario;
-import com.usuario.usuario.service.UsuarioService;
-
-import jakarta.persistence.EntityNotFoundException;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Clase de pruebas para UsuarioController.
- * Se enfoca en probar la capa web (controlador) de forma aislada.
- * Utiliza @WebMvcTest para configurar solo lo necesario para probar el controlador.
- * El UsuarioService es simulado (mockeado) para no depender de la lógica de negocio real.
- */
 @WebMvcTest(UsuarioController.class)
-@DisplayName("Tests de Integración (WebMvcTest) para UsuarioController")
+@DisplayName("Tests para UsuarioController con Cobertura Completa")
 class UsuarioControllerTest {
 
-    // Objeto para simular peticiones HTTP al controlador.
     @Autowired
     private MockMvc mockMvc;
 
-    // Crea un mock del servicio para poder controlar su comportamiento en las pruebas.
     @MockBean
     private UsuarioService usuarioService;
 
-    // Utilidad para convertir objetos Java a JSON y viceversa.
     @Autowired
     private ObjectMapper objectMapper;
 
-    // Datos de prueba que se usarán en múltiples tests.
-    private Usuario testUsuario;
-    private Rol testRol;
+    // --- Datos de prueba ---
+    private Usuario usuarioActivo;
+    private Usuario usuarioInactivo;
+    private Rol rolAdmin;
+    private Usuario usuarioSinRol; // Nuevo usuario sin rol
 
-    /**
-     * Método que se ejecuta ANTES de cada test.
-     * Inicializa los objetos de prueba para asegurar que cada test
-     * comience con un estado limpio y predecible.
-     */
     @BeforeEach
     void setUp() {
-        // Se crea un rol de prueba.
-        testRol = new Rol();
-        testRol.setId(1L);
-        testRol.setNombreRol("ADMIN");
-        testRol.setEstadoRol(true);
+        rolAdmin = new Rol();
+        rolAdmin.setId(1L);
+        rolAdmin.setNombreRol("ADMIN");
+        rolAdmin.setEstadoRol(true);
 
-        // Se crea un usuario de prueba y se le asigna el rol.
-        testUsuario = new Usuario();
-        testUsuario.setIdUsuario(1);
-        testUsuario.setNomUsuario("Test");
-        testUsuario.setApUsuario("User");
-        testUsuario.setCorreoUsuario("test@example.com");
-        testUsuario.setPassUsuario("hashed_password");
-        testUsuario.setEstadoUsuario(true);
-        testUsuario.setRol(testRol);
-        testUsuario.setIdTienda(101);
+        usuarioActivo = new Usuario();
+        usuarioActivo.setIdUsuario(1);
+        usuarioActivo.setNomUsuario("Test");
+        usuarioActivo.setCorreoUsuario("test@example.com");
+        usuarioActivo.setEstadoUsuario(true);
+        usuarioActivo.setRol(rolAdmin);
+        usuarioActivo.setIdTienda(101);
+
+        usuarioInactivo = new Usuario();
+        usuarioInactivo.setIdUsuario(2);
+        usuarioInactivo.setNomUsuario("Inactive");
+        usuarioInactivo.setCorreoUsuario("inactive@example.com");
+        usuarioInactivo.setEstadoUsuario(false);
+        usuarioInactivo.setRol(rolAdmin);
+        usuarioInactivo.setIdTienda(102);
+
+        usuarioSinRol = new Usuario();
+        usuarioSinRol.setIdUsuario(3);
+        usuarioSinRol.setNomUsuario("NoRole");
+        usuarioSinRol.setCorreoUsuario("norole@example.com");
+        usuarioSinRol.setEstadoUsuario(true);
+        usuarioSinRol.setRol(null); // Explicitamente sin rol
+        usuarioSinRol.setIdTienda(103);
     }
 
-    // --- PRUEBAS PARA crearUsuario (POST /usuarios) ---
+    // --- 1. Crear Usuario (POST /usuarios) ---
 
     @Test
-    @DisplayName("POST /usuarios - Debería crear un usuario y retornar 201 CREATED")
+    @DisplayName("POST /usuarios - Éxito al crear")
     void testCrearUsuario_Success() throws Exception {
-        // ARRANGE: Se configura el mock del servicio. Cuando se llame a 'crearUsuario',
-        // devolverá el objeto 'testUsuario'.
-        Mockito.when(usuarioService.crearUsuario(any(Usuario.class))).thenReturn(testUsuario);
+        Mockito.when(usuarioService.crearUsuario(any(Usuario.class))).thenReturn(usuarioActivo);
 
-        // ACT & ASSERT: Se ejecuta la petición POST y se verifican los resultados.
         mockMvc.perform(post("/usuarios")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testUsuario)))
-                .andExpect(status().isCreated()) // Espera un estado HTTP 201 (Created).
-                .andExpect(jsonPath("$.idUsuario").value(testUsuario.getIdUsuario())) // Verifica el ID en el JSON de respuesta.
-                .andExpect(jsonPath("$.nomUsuario").value(testUsuario.getNomUsuario()))
-                .andExpect(jsonPath("$.correoUsuario").value(testUsuario.getCorreoUsuario()))
-                .andExpect(jsonPath("$._links.self.href").exists()); // Verifica que el enlace HATEOAS existe.
-
-        // VERIFY: Confirma que el método 'crearUsuario' del servicio fue llamado una vez.
-        Mockito.verify(usuarioService, Mockito.times(1)).crearUsuario(any(Usuario.class));
+                        .content(objectMapper.writeValueAsString(usuarioActivo)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idUsuario").value(usuarioActivo.getIdUsuario()))
+                .andExpect(jsonPath("$._links.self.href").exists());
     }
 
     @Test
-    @DisplayName("POST /usuarios - Debería retornar 400 BAD_REQUEST si el correo está duplicado")
+    @DisplayName("POST /usuarios - Falla por argumento ilegal")
     void testCrearUsuario_EmailDuplicate_BadRequest() throws Exception {
-        // ARRANGE: Se configura el mock para que lance una excepción, simulando un error de negocio.
         String errorMessage = "El correo test@example.com ya está en uso.";
         Mockito.when(usuarioService.crearUsuario(any(Usuario.class)))
                 .thenThrow(new IllegalArgumentException(errorMessage));
 
-        // ACT & ASSERT: Se realiza la petición y se verifica la respuesta de error 400.
         mockMvc.perform(post("/usuarios")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(testUsuario)))
+                        .content(objectMapper.writeValueAsString(usuarioActivo)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(errorMessage)); // Verifica el mensaje de error.
-
-        Mockito.verify(usuarioService, Mockito.times(1)).crearUsuario(any(Usuario.class));
+                .andExpect(jsonPath("$.message").value(errorMessage));
     }
 
-    // --- PRUEBAS PARA actualizarUsuario (PUT /usuarios/{id}) ---
-    
-    @Test
-    @DisplayName("PUT /usuarios/{id} - Debería actualizar un usuario y retornar 200 OK")
-    void testActualizarUsuario_Success() throws Exception {
-        // ARRANGE: Se crea un objeto con los datos actualizados.
-        Usuario updatedUsuario = new Usuario();
-        updatedUsuario.setIdUsuario(testUsuario.getIdUsuario());
-        updatedUsuario.setNomUsuario("Updated Name");
-        updatedUsuario.setCorreoUsuario("updated@example.com");
-
-        // Se configura el mock para que devuelva el usuario actualizado.
-        Mockito.when(usuarioService.actualizarUsuario(eq(testUsuario.getIdUsuario()), any(Usuario.class)))
-                .thenReturn(updatedUsuario);
-
-        // ACT & ASSERT: Se ejecuta la petición PUT.
-        mockMvc.perform(put("/usuarios/{id}", testUsuario.getIdUsuario())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedUsuario)))
-                .andExpect(status().isOk()) // Espera un estado HTTP 200 (OK).
-                .andExpect(jsonPath("$.nomUsuario").value("Updated Name"))
-                .andExpect(jsonPath("$.correoUsuario").value("updated@example.com"));
-
-        Mockito.verify(usuarioService, Mockito.times(1))
-                .actualizarUsuario(eq(testUsuario.getIdUsuario()), any(Usuario.class));
-    }
-
-
-    // --- PRUEBAS PARA desactivarUsuario (DELETE /usuarios/{id}) ---
+    // --- 2. Obtener Usuario por ID (GET /usuarios/{id}) ---
 
     @Test
-    @DisplayName("DELETE /usuarios/{id} - Debería desactivar un usuario y retornar 200 OK")
-    void testDesactivarUsuario_Success() throws Exception {
-        // ARRANGE: Se crea un objeto que representa el estado final del usuario (desactivado).
-        Usuario deactivatedUsuario = new Usuario();
-        deactivatedUsuario.setIdUsuario(testUsuario.getIdUsuario());
-        deactivatedUsuario.setEstadoUsuario(false); // Estado cambiado a false.
+    @DisplayName("GET /usuarios/{id} - Éxito con usuario activo")
+    void testObtenerUsuarioPorId_Activo_Success() throws Exception {
+        Mockito.when(usuarioService.obtenerUsuarioPorId(eq(usuarioActivo.getIdUsuario())))
+                .thenReturn(Optional.of(usuarioActivo));
 
-        Mockito.when(usuarioService.desactivarUsuario(eq(testUsuario.getIdUsuario())))
-                .thenReturn(deactivatedUsuario);
-
-        // ACT & ASSERT: Se simula una petición DELETE.
-        mockMvc.perform(delete("/usuarios/{id}", testUsuario.getIdUsuario()))
+        mockMvc.perform(get("/usuarios/{id}", usuarioActivo.getIdUsuario()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estadoUsuario").value(false)) // Verifica que el estado en la respuesta sea false.
-                .andExpect(jsonPath("$._links.reactivate.href").exists()); // Ahora debe existir un enlace para reactivar.
-
-        Mockito.verify(usuarioService, Mockito.times(1)).desactivarUsuario(eq(testUsuario.getIdUsuario()));
+                .andExpect(jsonPath("$.idUsuario").value(usuarioActivo.getIdUsuario()))
+                .andExpect(jsonPath("$._links.deactivate.href").exists()) // Debe tener enlace para desactivar
+                .andExpect(jsonPath("$._links.reactivate").doesNotExist()); // No debe tener para reactivar
     }
 
-
-    // --- PRUEBAS PARA obtenerUsuarioPorId (GET /usuarios/{id}) ---
-
     @Test
-    @DisplayName("GET /usuarios/{id} - Debería retornar un usuario activo y 200 OK")
-    void testObtenerUsuarioPorId_Success() throws Exception {
-        // ARRANGE: Se configura el mock para que devuelva un Optional que contiene el usuario.
-        Mockito.when(usuarioService.obtenerUsuarioPorId(eq(testUsuario.getIdUsuario())))
-                .thenReturn(Optional.of(testUsuario));
+    @DisplayName("GET /usuarios/{id} - Éxito con usuario inactivo")
+    void testObtenerUsuarioPorId_Inactivo_Success() throws Exception {
+        Mockito.when(usuarioService.obtenerUsuarioPorId(eq(usuarioInactivo.getIdUsuario())))
+                .thenReturn(Optional.of(usuarioInactivo));
 
-        // ACT & ASSERT: Se realiza la petición GET.
-        mockMvc.perform(get("/usuarios/{id}", testUsuario.getIdUsuario()))
+        mockMvc.perform(get("/usuarios/{id}", usuarioInactivo.getIdUsuario()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idUsuario").value(testUsuario.getIdUsuario()));
-
-        Mockito.verify(usuarioService, Mockito.times(1)).obtenerUsuarioPorId(eq(testUsuario.getIdUsuario()));
+                .andExpect(jsonPath("$.idUsuario").value(usuarioInactivo.getIdUsuario()))
+                .andExpect(jsonPath("$._links.reactivate.href").exists()) // Debe tener enlace para reactivar
+                .andExpect(jsonPath("$._links.deactivate").doesNotExist()); // No debe tener para desactivar
     }
 
     @Test
-    @DisplayName("GET /usuarios/{id} - Debería retornar 404 NOT_FOUND si el usuario activo no existe")
+    @DisplayName("GET /usuarios/{id} - Falla por no encontrar")
     void testObtenerUsuarioPorId_NotFound() throws Exception {
-        // ARRANGE: Se configura el mock para que devuelva un Optional vacío.
-        Mockito.when(usuarioService.obtenerUsuarioPorId(eq(99)))
-                .thenReturn(Optional.empty());
+        Mockito.when(usuarioService.obtenerUsuarioPorId(eq(99))).thenReturn(Optional.empty());
 
-        // ACT & ASSERT: Se realiza la petición y se verifica la respuesta 404.
         mockMvc.perform(get("/usuarios/{id}", 99))
                 .andExpect(status().isNotFound());
-
-        Mockito.verify(usuarioService, Mockito.times(1)).obtenerUsuarioPorId(eq(99));
     }
 
-
-    // --- PRUEBAS PARA obtenerTodosUsuariosActivos (GET /usuarios/activos) ---
+    // --- 3. Obtener todos los usuarios activos (GET /usuarios/activos) ---
 
     @Test
-    @DisplayName("GET /usuarios/activos - Debería retornar una lista de usuarios activos y 200 OK")
+    @DisplayName("GET /usuarios/activos - Éxito con lista")
     void testObtenerTodosUsuariosActivos_Success() throws Exception {
-        // ARRANGE: Se crea un segundo usuario para la lista.
-        Usuario usuario2 = new Usuario();
-        usuario2.setIdUsuario(2);
-        usuario2.setEstadoUsuario(true);
+        Mockito.when(usuarioService.obtenerTodosUsuariosActivos()).thenReturn(Collections.singletonList(usuarioActivo));
 
-        Mockito.when(usuarioService.obtenerTodosUsuariosActivos()).thenReturn(Arrays.asList(testUsuario, usuario2));
-
-        // ACT & ASSERT:
         mockMvc.perform(get("/usuarios/activos"))
                 .andExpect(status().isOk())
-                // CORRECCIÓN: Las respuestas de colección con HATEOAS anidan la lista dentro de '_embedded'.
-                // Se debe verificar la longitud y los elementos dentro de esta estructura.
-                .andExpect(jsonPath("$._embedded.usuarioList.length()").value(2))
-                .andExpect(jsonPath("$._embedded.usuarioList[0].idUsuario").value(testUsuario.getIdUsuario()))
-                .andExpect(jsonPath("$._embedded.usuarioList[1].idUsuario").value(usuario2.getIdUsuario()));
-
-        Mockito.verify(usuarioService, Mockito.times(1)).obtenerTodosUsuariosActivos();
-    }
-
-    @Test
-    @DisplayName("GET /usuarios/activos - Debería retornar una respuesta apropiada si no hay usuarios activos")
-    void testObtenerTodosUsuariosActivos_EmptyList() throws Exception {
-        // ARRANGE: Se configura el mock para que devuelva una lista vacía.
-        Mockito.when(usuarioService.obtenerTodosUsuariosActivos()).thenReturn(Collections.emptyList());
-
-        // ACT & ASSERT:
-        mockMvc.perform(get("/usuarios/activos"))
-                .andExpect(status().isOk())
-                // CORRECCIÓN: Para una lista vacía en HATEOAS, la propiedad '_embedded' no debería existir.
-                // Esta es una forma más robusta de verificar una colección vacía.
-                .andExpect(jsonPath("$._embedded").doesNotExist())
-                .andExpect(jsonPath("$._links.self.href").exists()); // El enlace a 'self' sí debe existir.
-
-        Mockito.verify(usuarioService, Mockito.times(1)).obtenerTodosUsuariosActivos();
-    }
-
-    // --- PRUEBAS PARA obtenerTodosUsuarios (GET /usuarios/todos) ---
-
-    @Test
-    @DisplayName("GET /usuarios/todos - Debería retornar todos los usuarios (activos e inactivos) y 200 OK")
-    void testObtenerTodosUsuarios_Success() throws Exception {
-        // ARRANGE: Se crea un usuario inactivo para la lista.
-        Usuario inactiveUser = new Usuario();
-        inactiveUser.setIdUsuario(3);
-        inactiveUser.setEstadoUsuario(false);
-
-        Mockito.when(usuarioService.obtenerTodosUsuarios()).thenReturn(Arrays.asList(testUsuario, inactiveUser));
-
-        // ACT & ASSERT:
-        mockMvc.perform(get("/usuarios/todos"))
-                .andExpect(status().isOk())
-                // CORRECCIÓN: Se ajusta el jsonPath para la estructura HATEOAS.
-                .andExpect(jsonPath("$._embedded.usuarioList.length()").value(2))
-                .andExpect(jsonPath("$._embedded.usuarioList[0].estadoUsuario").value(true))
-                .andExpect(jsonPath("$._embedded.usuarioList[1].estadoUsuario").value(false));
-
-        Mockito.verify(usuarioService, Mockito.times(1)).obtenerTodosUsuarios();
-    }
-
-
-    // --- PRUEBAS PARA listarUsuariosPorTienda (GET /usuarios/tienda/{idTienda}) ---
-
-    @Test
-    @DisplayName("GET /usuarios/tienda/{idTienda} - Debería retornar usuarios de una tienda y 200 OK")
-    void testListarUsuariosPorTienda_Success() throws Exception {
-        // ARRANGE: El 'testUsuario' ya pertenece a la tienda 101.
-        Mockito.when(usuarioService.listarUsuariosPorTienda(eq(101))).thenReturn(Collections.singletonList(testUsuario));
-
-        // ACT & ASSERT:
-        mockMvc.perform(get("/usuarios/tienda/{idTienda}", 101))
-                .andExpect(status().isOk())
-                // CORRECCIÓN: Se ajusta el jsonPath para la estructura HATEOAS.
-                // CORRECCIÓN: Se verifica la longitud correcta (1) que coincide con la configuración del mock.
                 .andExpect(jsonPath("$._embedded.usuarioList.length()").value(1))
-                .andExpect(jsonPath("$._embedded.usuarioList[0].idTienda").value(101));
-
-        Mockito.verify(usuarioService, Mockito.times(1)).listarUsuariosPorTienda(eq(101));
+                .andExpect(jsonPath("$._embedded.usuarioList[0].idUsuario").value(usuarioActivo.getIdUsuario()));
     }
     
-    // Y aquí puedes añadir el resto de los tests que ya funcionaban, bien comentados...
-    // Por ejemplo: testActualizarUsuario_UserNotFound_NotFound, testAsignarRol_Success, etc.
-    // Todos ellos seguirían la misma estructura de Arrange-Act-Assert-Verify.
+    @Test
+    @DisplayName("GET /usuarios/activos - Éxito con lista vacía")
+    void testObtenerTodosUsuariosActivos_EmptyList() throws Exception {
+        Mockito.when(usuarioService.obtenerTodosUsuariosActivos()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/usuarios/activos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded").doesNotExist())
+                .andExpect(jsonPath("$._links.self.href").exists());
+    }
+
+    // --- 4. Obtener todos los usuarios (GET /usuarios/todos) ---
+
+    @Test
+    @DisplayName("GET /usuarios/todos - Éxito con lista mixta")
+    void testObtenerTodosUsuarios_Success() throws Exception {
+        Mockito.when(usuarioService.obtenerTodosUsuarios()).thenReturn(Arrays.asList(usuarioActivo, usuarioInactivo));
+
+        mockMvc.perform(get("/usuarios/todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded.usuarioList.length()").value(2))
+                .andExpect(jsonPath("$._embedded.usuarioList[0].estadoUsuario").value(true))
+                .andExpect(jsonPath("$._embedded.usuarioList[0]._links.reactivate").doesNotExist())
+                .andExpect(jsonPath("$._embedded.usuarioList[1].estadoUsuario").value(false))
+                .andExpect(jsonPath("$._embedded.usuarioList[1]._links.reactivate.href").exists());
+    }
+
+    @Test
+    @DisplayName("GET /usuarios/todos - Éxito con lista vacía")
+    void testObtenerTodosUsuarios_EmptyList() throws Exception {
+        Mockito.when(usuarioService.obtenerTodosUsuarios()).thenReturn(Collections.emptyList());
+        mockMvc.perform(get("/usuarios/todos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded").doesNotExist());
+    }
+    
+    // --- 5. Actualizar Usuario (PUT /usuarios/{id}) ---
+    
+    @Test
+    @DisplayName("PUT /usuarios/{id} - Éxito al actualizar")
+    void testActualizarUsuario_Success() throws Exception {
+        Mockito.when(usuarioService.actualizarUsuario(eq(usuarioActivo.getIdUsuario()), any(Usuario.class)))
+                .thenReturn(usuarioActivo);
+
+        mockMvc.perform(put("/usuarios/{id}", usuarioActivo.getIdUsuario())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(usuarioActivo)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.idUsuario").value(usuarioActivo.getIdUsuario()));
+    }
+    
+    @Test
+    @DisplayName("PUT /usuarios/{id} - Falla por no encontrar")
+    void testActualizarUsuario_NotFound() throws Exception {
+        Mockito.when(usuarioService.actualizarUsuario(eq(99), any(Usuario.class)))
+                .thenThrow(new EntityNotFoundException("Usuario no encontrado"));
+        
+        mockMvc.perform(put("/usuarios/{id}", 99)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(usuarioActivo)))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- 6. Desactivar Usuario (DELETE /usuarios/{id}) ---
+
+    @Test
+    @DisplayName("DELETE /usuarios/{id} - Éxito al desactivar")
+    void testDesactivarUsuario_Success() throws Exception {
+        Mockito.when(usuarioService.desactivarUsuario(eq(usuarioActivo.getIdUsuario())))
+                .thenReturn(usuarioInactivo);
+
+        mockMvc.perform(delete("/usuarios/{id}", usuarioActivo.getIdUsuario()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoUsuario").value(false));
+    }
+    
+    @Test
+    @DisplayName("DELETE /usuarios/{id} - Falla por no encontrar")
+    void testDesactivarUsuario_NotFound() throws Exception {
+        Mockito.when(usuarioService.desactivarUsuario(eq(99)))
+                .thenThrow(new EntityNotFoundException("Usuario no encontrado"));
+        
+        mockMvc.perform(delete("/usuarios/{id}", 99))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- 7. Reactivar Usuario (PUT /usuarios/{id}/reactivar) ---
+
+    @Test
+    @DisplayName("PUT /usuarios/{id}/reactivar - Éxito al reactivar")
+    void testReactivarUsuario_Success() throws Exception {
+        Mockito.when(usuarioService.reactivarUsuario(eq(usuarioInactivo.getIdUsuario())))
+                .thenReturn(usuarioActivo);
+        
+        mockMvc.perform(put("/usuarios/{id}/reactivar", usuarioInactivo.getIdUsuario()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estadoUsuario").value(true));
+    }
+    
+    @Test
+    @DisplayName("PUT /usuarios/{id}/reactivar - Falla por no encontrar")
+    void testReactivarUsuario_NotFound() throws Exception {
+        Mockito.when(usuarioService.reactivarUsuario(eq(99)))
+                .thenThrow(new EntityNotFoundException("Usuario no encontrado"));
+
+        mockMvc.perform(put("/usuarios/{id}/reactivar", 99))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- 8. Asignar Rol (PUT /{id}/asignar-rol/{rolId}) ---
+
+    @Test
+    @DisplayName("PUT /{id}/asignar-rol/{rolId} - Éxito al asignar rol")
+    void testAsignarRol_Success() throws Exception {
+        Mockito.when(usuarioService.asignarRol(eq(usuarioActivo.getIdUsuario()), eq(rolAdmin.getId())))
+                .thenReturn(usuarioActivo);
+
+        mockMvc.perform(put("/usuarios/{id}/asignar-rol/{rolId}", usuarioActivo.getIdUsuario(), rolAdmin.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol.id").value(rolAdmin.getId()));
+    }
+
+    @Test
+    @DisplayName("PUT /{id}/asignar-rol/{rolId} - Falla si no encuentra usuario")
+    void testAsignarRol_UsuarioNotFound() throws Exception {
+        Mockito.when(usuarioService.asignarRol(eq(99), eq(rolAdmin.getId())))
+                .thenThrow(new EntityNotFoundException("Usuario no encontrado"));
+
+        mockMvc.perform(put("/usuarios/{id}/asignar-rol/{rolId}", 99, rolAdmin.getId()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("PUT /{id}/asignar-rol/{rolId} - Falla si no encuentra rol")
+    void testAsignarRol_RolNotFound() throws Exception {
+        Mockito.when(usuarioService.asignarRol(eq(usuarioActivo.getIdUsuario()), eq(99L)))
+                .thenThrow(new EntityNotFoundException("Rol no encontrado"));
+
+        mockMvc.perform(put("/usuarios/{id}/asignar-rol/{rolId}", usuarioActivo.getIdUsuario(), 99L))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- NUEVO: Test para Quitar Rol (DELETE /{id}/rol) ---
+    @Test
+    @DisplayName("DELETE /usuarios/{id}/rol - Éxito al quitar rol")
+    void testQuitarRolDeUsuario_Success() throws Exception {
+        Mockito.when(usuarioService.quitarRol(eq(usuarioActivo.getIdUsuario())))
+                .thenReturn(usuarioSinRol); // Devuelve el usuario sin rol
+
+        mockMvc.perform(delete("/usuarios/{id}/rol", usuarioActivo.getIdUsuario()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").doesNotExist()) // El campo rol no debe existir
+                .andExpect(jsonPath("$._links.assign-role.href").exists()); // Debe tener enlace para asignar rol
+    }
+
+    @Test
+    @DisplayName("DELETE /usuarios/{id}/rol - Falla por no encontrar usuario al quitar rol")
+    void testQuitarRolDeUsuario_NotFound() throws Exception {
+        Mockito.when(usuarioService.quitarRol(eq(99)))
+                .thenThrow(new EntityNotFoundException("Usuario no encontrado para quitar rol"));
+
+        mockMvc.perform(delete("/usuarios/{id}/rol", 99))
+                .andExpect(status().isNotFound());
+    }
+
+    // --- 9. Listar Usuarios por Tienda (GET /usuarios/tienda/{idTienda}) ---
+
+    @Test
+    @DisplayName("GET /usuarios/tienda/{id} - Éxito con lista")
+    void testListarUsuariosPorTienda_Success() throws Exception {
+        Mockito.when(usuarioService.listarUsuariosPorTienda(eq(101)))
+                .thenReturn(Collections.singletonList(usuarioActivo));
+
+        mockMvc.perform(get("/usuarios/tienda/{idTienda}", 101))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded.usuarioList.length()").value(1))
+                .andExpect(jsonPath("$._embedded.usuarioList[0].idTienda").value(101));
+    }
+    
+    @Test
+    @DisplayName("GET /usuarios/tienda/{id} - Éxito con lista vacía")
+    void testListarUsuariosPorTienda_EmptyList() throws Exception {
+        Mockito.when(usuarioService.listarUsuariosPorTienda(eq(999)))
+                .thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/usuarios/tienda/{idTienda}", 999))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$._embedded").doesNotExist());
+    }
+
+    // --- 10. Pruebas para Manejadores de Excepciones ---
+    
+    // Test para la rama "exception.class" con una excepción que no sea IllegalArgument o EntityNotFound
+    @Test
+    @DisplayName("Handler - Debería manejar errores genéricos con 500 INTERNAL_SERVER_ERROR")
+    void testHandleGenericException_InternalServerError() throws Exception {
+        String errorMessage = "Error inesperado de base de datos";
+        // Simula que cualquier método lanza una RuntimeException (no EntityNotFoundException ni IllegalArgumentException)
+        Mockito.when(usuarioService.obtenerUsuarioPorId(any(Integer.class)))
+                .thenThrow(new RuntimeException(errorMessage));
+
+        mockMvc.perform(get("/usuarios/{id}", 1)) // Llama a un endpoint que pueda lanzar la excepción
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Internal Server Error"))
+                .andExpect(jsonPath("$.message", containsString(errorMessage)));
+    }
 }

@@ -18,5 +18,6 @@ public interface UsuarioService {
     List<Usuario> obtenerTodosUsuarios(); // Este puede obtener todos, incluyendo inactivos
     List<Permiso> obtenerPermisosUsuario(Integer idUsuario);
     Usuario asignarRol(Integer idUsuario, Long rolId);
+    Usuario quitarRol(Integer idUsuario);
     List<Usuario> listarUsuariosPorTienda(Integer idTienda);
 }

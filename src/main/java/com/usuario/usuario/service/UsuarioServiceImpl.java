@@ -166,4 +166,16 @@ public class UsuarioServiceImpl implements UsuarioService {
         // Por defecto, listar usuarios activos por tienda
         return usuarioRepository.findByIdTiendaAndEstadoUsuario(idTienda, true);
     }
+    @Override
+    @Transactional
+    public Usuario quitarRol(Integer idUsuario) {
+        // Busca un usuario activo para poder modificarlo
+        Usuario usuario = usuarioRepository.findByIdUsuarioAndEstadoUsuario(idUsuario, true)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario activo no encontrado con id: " + idUsuario));
+
+        // Simplemente establece el rol a null
+        usuario.setRol(null);
+
+        return usuarioRepository.save(usuario);
+    }
 }

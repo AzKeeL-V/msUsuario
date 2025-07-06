@@ -182,6 +182,24 @@ public class UsuarioController {
         return new ResponseEntity<>(usuarioConLinks, HttpStatus.OK);
     }
 
+    // quitar rol (DELETE)
+    @DeleteMapping("/{id}/rol")
+    public ResponseEntity<EntityModel<Usuario>> quitarRolDeUsuario(@PathVariable Integer id) {
+        // establece el rol del usuario a null.
+        Usuario usuarioSinRol = usuarioService.quitarRol(id);
+        
+        // Envolvemos la respuesta para añadir enlaces HATEOAS
+        EntityModel<Usuario> usuarioConLinks = EntityModel.of(usuarioSinRol);
+
+        // Qué se puede hacer ahora que el usuario no tiene rol?
+        // asignarle uno nuevo.
+        usuarioConLinks.add(linkTo(methodOn(UsuarioController.class).obtenerUsuarioPorId(id)).withSelfRel());
+        usuarioConLinks.add(linkTo(methodOn(UsuarioController.class).asignarRol(id, null)).withRel("assign-role"));
+        usuarioConLinks.add(linkTo(methodOn(UsuarioController.class).obtenerTodosUsuarios()).withRel("all-users"));
+
+        return ResponseEntity.ok(usuarioConLinks);
+    }
+
     // 9. Listar Usuarios por Tienda (GET)
     @GetMapping("/tienda/{idTienda}")
     public ResponseEntity<CollectionModel<EntityModel<Usuario>>> listarUsuariosPorTienda(@PathVariable Integer idTienda) {
